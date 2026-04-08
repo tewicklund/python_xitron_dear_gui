@@ -1,6 +1,5 @@
 from screeninfo import get_monitors
-import time
-import socket
+
 
 # function for sizing UI window (viewport) based on primary monitor width and height
 def compute_window_size(width=None, height=None):
@@ -38,4 +37,3 @@ def prep_float_for_disp(input_float_string,num_chars=8):
             output_float_length=len(output_float_string)
         return output_float_string
 
-def get_xitron_response(open_socket,)
