@@ -22,12 +22,23 @@ def decrement_page():
         current_page_num -= 1
         dpg.set_value('PA_ID',PA_names[current_page_num])
 
+
+
 # start test callback function
 def start_test():
-    f=open("sample_response.txt",'r')
-    sample_response_string=f.readline()
-    f.close()
-    render_feedback(sample_response_string)
+    # collect input parameters from GUI
+    log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
+    print(log_file_full_path)
+    num_harmonics=dpg.get_value("num_harmonics_int")
+    logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
+    extra_data_string=dpg.get_value("extra_data_text")
+
+
+
+    # f=open("sample_response.txt",'r')
+    # sample_response_string=f.readline()
+    # f.close()
+    # render_feedback(sample_response_string)
     pass
 
 # stop test callback function
@@ -124,25 +135,25 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         # Test Name field
         with dpg.table_row():
             dpg.add_text("Test Name:")
-            dpg.add_input_text(width=-1, hint=".csv appended automatically")
+            dpg.add_input_text(width=-1, hint=".csv appended automatically",tag="test_name_text")
 
         
         # Log file path field
         with dpg.table_row():
             dpg.add_text("Log File Path:")
-            full_path_text=dpg.add_input_text(width=-1,default_value=Path(__file__).resolve().parent)
+            full_path_text=dpg.add_input_text(width=-1,default_value=Path(__file__).resolve().parent,tag="folder_path_text")
             dpg.bind_item_font(full_path_text,tiny_font)
 
 
         
         with dpg.table_row():
             dpg.add_text("Num Harmonics to Log:")
-            dpg.add_input_int()
+            dpg.add_input_int(tag='num_harmonics_int')
 
         
         with dpg.table_row():
             dpg.add_text("Logging Period (ms):")
-            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000")
+            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000",tag="log_period_ms_text")
 
         
 
@@ -154,7 +165,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
 
         with dpg.table_row():
             dpg.add_text("Extra Data to Log")
-            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF")
+            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text")
 
        
 
