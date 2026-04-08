@@ -1,6 +1,10 @@
 import dearpygui.dearpygui as dpg
-from screeninfo import get_monitors
+from helper_functions import *
 from pathlib import Path
+
+
+#-------------------------------------------------- CALLBACK SECTION --------------------------------------------------#
+
 
 # right arrow callback function
 def increment_page():
@@ -20,29 +24,49 @@ def decrement_page():
 
 # start test callback function
 def start_test():
+    f=open("sample_response.txt",'r')
+    sample_response_string=f.readline()
+    f.close()
+    render_feedback(sample_response_string)
     pass
 
 # stop test callback function
 def stop_test():
     pass
 
-# function for sizing UI window (viewport) based on primary monitor width and height
-def compute_window_size(width=None, height=None):
-    all_monitors=get_monitors()
 
-    main_monitor=max(all_monitors,key=lambda monitor: monitor.width * monitor.height)
-    main_width=main_monitor.width
-    main_height=main_monitor.height
+#-------------------------------------------------- CALLBACK SECTION --------------------------------------------------#
 
-    viewport_width=int(main_width*0.75)
-    viewport_height=int(main_height*0.75)
 
-    # OVERRIDE: User can enter their own custom viewport size
-    if width is not None and height is not None:
-        viewport_width=width
-        viewport_height=height
+# function for converting response string to display
+def render_feedback(response_string_raw):
+    response_list=response_string_raw.split(',')
+    response_index=0
+    for chan in channel_names:
+        dpg.set_value(f'V_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'V_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'V_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'A_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'A_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'A_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'W_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'W_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'W_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
+        dpg.set_value(f'PF_{chan}',prep_float_for_disp(response_list[response_index]))
+        response_index+=1
 
-    return viewport_width,viewport_height
+
+
+
 
 
 # dearpygui setup
@@ -75,6 +99,7 @@ with dpg.font_registry():
     normal_font = dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.013))
     tiny_font = dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.008))
     button_font=dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.05))
+    feedback_font=dpg.add_font("FiraMono-Regular.ttf",int(viewport_width*0.013))
 
 # text defaults to normal font
 dpg.bind_font(normal_font)
@@ -186,7 +211,7 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
 
         with dpg.table_row():
             
-            dpg.add_text(PA_names[0],tag="col0")
+            dpg.add_text(PA_names[0],tag="PA_ID")
             for chan in channel_names:
                 dpg.add_text(chan)
 
@@ -194,18 +219,24 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
         with dpg.table_row():
             dpg.add_text("VOLTS RMS")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"V_RMS_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
 
         with dpg.table_row():
             dpg.add_text("VOLTS AC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"V_AC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("VOLTS DC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"V_DC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("")
@@ -215,17 +246,23 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
         with dpg.table_row():
             dpg.add_text("AMPS RMS")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"A_RMS_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("AMPS AC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"A_AC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("AMPS DC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"A_DC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("")
@@ -235,17 +272,23 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
         with dpg.table_row():
             dpg.add_text("WATTS RMS")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"W_RMS_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("WATTS AC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"W_AC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("WATTS DC")
             for chan in channel_names:
-                dpg.add_text("0.0000")
+                tag_string=f"W_DC_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
         with dpg.table_row():
             dpg.add_text("")
@@ -255,7 +298,9 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
         with dpg.table_row():
             dpg.add_text("POWER FACTOR")
             for chan in channel_names:
-                dpg.add_text("0.0000") 
+                tag_string=f"PF_{chan}"
+                dpg.add_text("0.000000",tag=tag_string)
+                dpg.bind_item_font(tag_string,feedback_font)
 
 
 with dpg.window( pos=(ctrl_width,fb_height),width=fb_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
