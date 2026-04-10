@@ -48,7 +48,6 @@ def worker():
 
     # collect input parameters from GUI
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
-    print(log_file_full_path, flush=True)
     num_harmonics=dpg.get_value("num_harmonics_int")
     logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
     if dpg.get_value("test_duration_text") == "":
@@ -72,36 +71,35 @@ def worker():
     query_string_list=build_query_string_list("ch1_q_string.txt",num_harmonics)
     
 
-    # add harmonics and extra parameters to the query string
-    # for channel_num in range(len(channel_names)):
-    #     for x in range(num_harmonics):
-    #         query_string+=f',V:CH{channel_num+1}:H{x+1},A:CH{channel_num+1}:H{x+1}'
-    # query_string+=','+extra_data_string
-    # query_string=query_string.removesuffix(',')
-    # query_string+='\n'
-    # print(repr(query_string), flush=True)
-
     # open sockets for power analyzers
     PA_sockets=[]
     for x in range(len(PA_names)):
         if PA_IPs[x] != "" and PA_ports[x] != "":
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print(f'attempting connection to {PA_IPs[x]} port {PA_ports[x]}', flush=True)
+            #print(f'attempting connection to {PA_IPs[x]} port {PA_ports[x]}', flush=True)
             s.connect((PA_IPs[x],PA_ports[x]))
             s.settimeout(10)
             PA_sockets.append(s)
-            print(f"Appended socket {s} to PA_sockets, there are now {len(PA_sockets)} sockets", flush=True)
+            #print(f"Appended socket {s} to PA_sockets, there are now {len(PA_sockets)} sockets", flush=True)
 
 
 
     # main test loop
     with open(log_file_full_path,'w') as f:
+
+        #setup
+        zeros_resp_string=""
+        for x in range(44):
+            zeros_resp_string+="0.0000,"
+
         # add column headers to first row
+        f.write("Timestamp Epoch ms,")
         for socket_num in range(len(PA_sockets)):
             for subquery in query_string_list:
-                column_headers_per_analyzer=subquery.removeprefix('READ?,').removesuffix('\n')
-                column_headers_per_analyzer.replace(',',f':PA{socket_num},')
+                column_headers_per_analyzer=subquery.removeprefix('READ?,').removesuffix('\n')+','
+                column_headers_per_analyzer=column_headers_per_analyzer.replace(',',f':PA{socket_num+1},')
                 f.write(column_headers_per_analyzer)
+            f.write(',')
         f.write('\n')
 
         # log and display each sample till end of test
@@ -110,24 +108,30 @@ def worker():
                 print("Stopped!", flush=True)
                 return
             reading_time=time.time()
-            print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
+            #print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
             big_response_string=""
             for socket_num in range(len(PA_sockets)):
                 for subquery in query_string_list:
-                    print(f'sending string {repr(subquery)}',flush=True)
+                    #print(f'sending string {repr(subquery)}',flush=True)
                     PA_sockets[socket_num].sendall(subquery.encode())
                     response_string=PA_sockets[socket_num].recv(4096).decode()
-                    print(f'Got response {response_string}', flush=True)
+                    #print(f'Got response {response_string}', flush=True)
                     time.sleep(0.01)
                     big_response_string+=response_string.rstrip('\r\n')+','
                 current_page_num=PA_names.index(dpg.get_value('PA_ID'))
-                print(f'big response string: {repr(big_response_string)}',flush=True)
-                if current_page_num == socket_num:
-                    render_feedback(big_response_string)
+                #print(f'big response string: {repr(big_response_string)}',flush=True)
+                
+                if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
+                    if current_page_num == socket_num:
+                        render_feedback(big_response_string,num_harmonics)
+                    else:
+                        render_feedback(zeros_resp_string,0)
+                f.write(str(int(reading_time*1000))+',')
                 f.write(big_response_string.rstrip('\r\n'))
 
             f.write('\n')
-            print(f"Got sample {sample_num} of {num_samples}", flush=True)
+            if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
+                print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
             while(time.time()<reading_time+logging_period_seconds_float):
                 pass
 
@@ -280,8 +284,9 @@ with dpg.window( pos=(0,ctrl_height),width=ctrl_width,height=button_window_heigh
 #------------------------------------------------- FEEDBACK SECTION --------------------------------------------------#
 
 # function for converting response string to display
-def render_feedback(response_string_raw):
+def render_feedback(response_string_raw,num_harms):
     response_list=response_string_raw.split(',')
+    #print(response_list,flush=True)
     response_index=0
     for chan in channel_names:
         dpg.set_value(f'V_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
@@ -305,7 +310,7 @@ def render_feedback(response_string_raw):
         dpg.set_value(f'PF_{chan}',prep_float_for_disp(response_list[response_index]))
         response_index+=1
         dpg.set_value(f'FREQ_{chan}',prep_float_for_disp(response_list[response_index]))
-        response_index+=1
+        response_index+=1+num_harms*2
 
 with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True,no_resize=True,no_title_bar=True):
 

@@ -48,8 +48,8 @@ def build_query_string_list(ch1_query_no_harms, num_harms):
     q_list=[ch1_query_with_harms]
     for x in range(3):
         q_list.append(ch1_query_with_harms.replace('CH1',f'CH{str(x+2)}'))
-    print(f"Source query string: {ch1_query_no_harms}")
-    print(f"Output query string list: {q_list}")
+    #print(f"Source query string: {ch1_query_no_harms}")
+    #print(f"Output query string list: {q_list}")
     return q_list
 
 test_q_list=build_query_string_list("ch1_q_string.txt",13)
