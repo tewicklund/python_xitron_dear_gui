@@ -20,6 +20,7 @@ def compute_window_size(width=None, height=None):
     return viewport_width,viewport_height
 
 def prep_float_for_disp(input_float_string,num_chars=8):
+    return(input_float_string)
 
     input_float_length=len(input_float_string)
 
@@ -37,3 +38,18 @@ def prep_float_for_disp(input_float_string,num_chars=8):
             output_float_length=len(output_float_string)
         return output_float_string
 
+def build_query_string_list(ch1_query_no_harms, num_harms):
+    # make a list of query strings to send to analyzer, limit of 480 char response
+    with open(ch1_query_no_harms,'r') as f:
+        ch1_query_with_harms=f.readline().rstrip('\r\n')
+    for x in range(num_harms):
+        ch1_query_with_harms+=f',V:CH1:H{x+1},A:CH1:H{x+1}'
+    ch1_query_with_harms+='\n'
+    q_list=[ch1_query_with_harms]
+    for x in range(3):
+        q_list.append(ch1_query_with_harms.replace('CH1',f'CH{str(x+2)}'))
+    print(f"Source query string: {ch1_query_no_harms}")
+    print(f"Output query string list: {q_list}")
+    return q_list
+
+test_q_list=build_query_string_list("ch1_q_string.txt",13)

@@ -30,6 +30,12 @@ def decrement_page():
 
 
 def start_test():
+    f=open("prev_options.txt",'w')
+    f.write(f'{dpg.get_value("test_name_text")},{dpg.get_value("folder_path_text")},{str(dpg.get_value("num_harmonics_int"))},{dpg.get_value("log_period_ms_text")},{dpg.get_value("test_duration_text")},{dpg.get_value("extra_data_text")},')
+    for x in range(len(PA_names)):
+        f.write(dpg.get_value(f'PA_IP{x+1}')+',')
+        f.write(dpg.get_value(f'PA_port{x+1}')+',')
+    f.close()
     stop_event.clear()
     threading.Thread(target=worker, daemon=True).start()
 
@@ -42,7 +48,7 @@ def worker():
 
     # collect input parameters from GUI
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
-    print(log_file_full_path)
+    print(log_file_full_path, flush=True)
     num_harmonics=dpg.get_value("num_harmonics_int")
     logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
     if dpg.get_value("test_duration_text") == "":
@@ -50,32 +56,41 @@ def worker():
     else:
         test_duration_seconds_float=float(dpg.get_value("test_duration_text"))
     extra_data_string=dpg.get_value("extra_data_text")
-    PA_IPs=[dpg.get_value('PA_IP1'),dpg.get_value('PA_IP2'),dpg.get_value('PA_IP3'),dpg.get_value('PA_IP4')]
-    PA_ports=[dpg.get_value('PA_port1'),dpg.get_value('PA_port2'),dpg.get_value('PA_port3'),dpg.get_value('PA_port4')]
+    PA_IPs=[]
+    PA_ports=[]
+    for x in range(len(PA_names)):
+        PA_IPs.append(dpg.get_value(f'PA_IP{x+1}'))
+        port_int=int((dpg.get_value(f'PA_port{x+1}')) or -1)
+        PA_ports.append(port_int)
+    
 
     # compute number of samples
     num_samples=int(test_duration_seconds_float/logging_period_seconds_float)
 
-    # import query string that is sent to power analyzers
-    f=open("query_string.txt",'r')
-    query_string=f.readline().removesuffix('\n')
-    f.close()
+
+    # make a list of query strings to send to analyzer, limit of 480 char response
+    query_string_list=build_query_string_list("ch1_q_string.txt",num_harmonics)
+    
 
     # add harmonics and extra parameters to the query string
-    for channel_num in range(len(channel_names)):
-        for x in range(num_harmonics):
-            query_string+=f',V:CH{channel_num+1}:H{x+1},A:CH{channel_num+1}:H{x+1}'
-    query_string+=','+extra_data_string+'\n'
-    print(query_string)
+    # for channel_num in range(len(channel_names)):
+    #     for x in range(num_harmonics):
+    #         query_string+=f',V:CH{channel_num+1}:H{x+1},A:CH{channel_num+1}:H{x+1}'
+    # query_string+=','+extra_data_string
+    # query_string=query_string.removesuffix(',')
+    # query_string+='\n'
+    # print(repr(query_string), flush=True)
 
     # open sockets for power analyzers
+    PA_sockets=[]
     for x in range(len(PA_names)):
-        PA_sockets=[]
         if PA_IPs[x] != "" and PA_ports[x] != "":
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print(f'attempting connection to {PA_IPs[x]} port {PA_ports[x]}', flush=True)
             s.connect((PA_IPs[x],PA_ports[x]))
             s.settimeout(10)
             PA_sockets.append(s)
+            print(f"Appended socket {s} to PA_sockets, there are now {len(PA_sockets)} sockets", flush=True)
 
 
 
@@ -83,26 +98,36 @@ def worker():
     with open(log_file_full_path,'w') as f:
         # add column headers to first row
         for socket_num in range(len(PA_sockets)):
-            column_headers_per_analyzer=query_string.removeprefix('READ?,').removesuffix('\n')
-            column_headers_per_analyzer.replace(',',f':PA{socket_num},')
-            f.write(column_headers_per_analyzer)
+            for subquery in query_string_list:
+                column_headers_per_analyzer=subquery.removeprefix('READ?,').removesuffix('\n')
+                column_headers_per_analyzer.replace(',',f':PA{socket_num},')
+                f.write(column_headers_per_analyzer)
         f.write('\n')
 
         # log and display each sample till end of test
         for sample_num in range(num_samples):
             if stop_event.is_set():
-                print("Stopped!")
+                print("Stopped!", flush=True)
                 return
             reading_time=time.time()
+            print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
+            big_response_string=""
             for socket_num in range(len(PA_sockets)):
-                PA_sockets[socket_num].sendall(query_string.encode())
-                response_string=PA_sockets[socket_num].recv(4096).decode()
+                for subquery in query_string_list:
+                    print(f'sending string {repr(subquery)}',flush=True)
+                    PA_sockets[socket_num].sendall(subquery.encode())
+                    response_string=PA_sockets[socket_num].recv(4096).decode()
+                    print(f'Got response {response_string}', flush=True)
+                    time.sleep(0.01)
+                    big_response_string+=response_string.rstrip('\r\n')+','
                 current_page_num=PA_names.index(dpg.get_value('PA_ID'))
+                print(f'big response string: {repr(big_response_string)}',flush=True)
                 if current_page_num == socket_num:
-                    render_feedback(response_string)
-                f.write(response_string).removesuffix('\r\n')
+                    render_feedback(big_response_string)
+                f.write(big_response_string.rstrip('\r\n'))
+
             f.write('\n')
-            print(f"Got sample {sample_num} of {num_samples}")
+            print(f"Got sample {sample_num} of {num_samples}", flush=True)
             while(time.time()<reading_time+logging_period_seconds_float):
                 pass
 
@@ -163,6 +188,12 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
     dpg.bind_item_font("ctrl_title",title_font)
     dpg.add_spacer(height=int(viewport_height*0.05))
 
+    # load defaults from file
+    f=open("prev_options.txt","r")
+    previous_options=f.readline()
+    f.close()
+    previous_options_list=previous_options.split(',')
+
 
     with dpg.table(header_row=False):
 
@@ -174,37 +205,38 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         # Test Name field
         with dpg.table_row():
             dpg.add_text("Test Name:")
-            dpg.add_input_text(width=-1, hint=".csv appended automatically",tag="test_name_text")
+            dpg.add_input_text(width=-1, hint=".csv appended automatically",tag="test_name_text",default_value=previous_options_list[0])
 
         
         # Log file path field
         with dpg.table_row():
             dpg.add_text("Log File Path:")
-            full_path_text=dpg.add_input_text(width=-1,default_value=Path(__file__).resolve().parent,tag="folder_path_text")
+            default_path=str(Path(__file__).resolve().parent)+'/csvs'
+            full_path_text=dpg.add_input_text(width=-1,default_value=default_path,tag="folder_path_text")
             dpg.bind_item_font(full_path_text,tiny_font)
 
 
         # Number of harmonics to log
         with dpg.table_row():
             dpg.add_text("Num Harmonics to Log:")
-            dpg.add_input_int(tag='num_harmonics_int',default_value=13)
+            dpg.add_input_int(tag='num_harmonics_int',default_value=int(previous_options_list[2]))
 
         # time between readings
         with dpg.table_row():
             dpg.add_text("Logging Period (ms):")
-            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000",tag="log_period_ms_text",default_value="1000")
+            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000",tag="log_period_ms_text",default_value=previous_options_list[3])
 
         
         # total test duration, leaving blank will set the test time to 1 week
         with dpg.table_row():
             dpg.add_text("Test Duration (s)")
-            dpg.add_input_text(width=-1,hint="Leave blank for indefinite logging",tag="test_duration_text")
+            dpg.add_input_text(width=-1,hint="Leave blank for indefinite logging",tag="test_duration_text",default_value=previous_options_list[4])
 
         
         # put other desired parameters to log here
         with dpg.table_row():
             dpg.add_text("Extra Data to Log")
-            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text")
+            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text",default_value=previous_options_list[5])
 
        
         with dpg.table_row():
@@ -212,14 +244,17 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
             dpg.add_text(" ")
 
         # Xitron network details
+        prev_options_index=6
         for x in range(len(PA_names)):
             with dpg.table_row():
                 dpg.add_text(f"Xitron {x+1} IP Address:")
-                dpg.add_input_text(width=-1,tag=f'PA_IP{x+1}')
+                dpg.add_input_text(width=-1,tag=f'PA_IP{x+1}',default_value=previous_options_list[prev_options_index])
+                prev_options_index+=1
 
             with dpg.table_row():
                 dpg.add_text(f"Xitron {x+1} Port:")
-                dpg.add_input_text(width=-1,tag=f'PA_port{x+1}')
+                dpg.add_input_text(width=-1,tag=f'PA_port{x+1}',default_value=previous_options_list[prev_options_index])
+                prev_options_index+=1
 
             with dpg.table_row():
                 dpg.add_text(" ")
