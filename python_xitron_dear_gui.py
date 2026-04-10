@@ -1,9 +1,9 @@
 import dearpygui.dearpygui as dpg
-from helper_functions import *
 from pathlib import Path
 import time
 import socket
 import threading
+from helper_functions import *
 
 # threading event to make stop button work
 stop_event=threading.Event()
@@ -13,7 +13,7 @@ stop_event=threading.Event()
 
 
 # right arrow callback function
-def increment_page():
+def right_arrow_callback():
     max_page_num=len(PA_names)-1
     current_page_num=PA_names.index(dpg.get_value('PA_ID'))
     if current_page_num+1<=max_page_num:
@@ -21,27 +21,34 @@ def increment_page():
         dpg.set_value('PA_ID',PA_names[current_page_num])
 
 # left arrow callback function
-def decrement_page():
+def left_arrow_callback():
     min_page_num=0
     current_page_num=PA_names.index(dpg.get_value('PA_ID'))
     if current_page_num>min_page_num:
         current_page_num -= 1
         dpg.set_value('PA_ID',PA_names[current_page_num])
 
-
+# START button callback function
 def start_test():
+
+    # save your inputs so they are the default when the program is launched next
     f=open("prev_options.txt",'w')
     f.write(f'{dpg.get_value("test_name_text")},{dpg.get_value("folder_path_text")},{str(dpg.get_value("num_harmonics_int"))},{dpg.get_value("log_period_ms_text")},{dpg.get_value("test_duration_text")},{dpg.get_value("extra_data_text")},')
     for x in range(len(PA_names)):
         f.write(dpg.get_value(f'PA_IP{x+1}')+',')
         f.write(dpg.get_value(f'PA_port{x+1}')+',')
     f.close()
+
+    # clear the stop event in case the last session was stopped 
     stop_event.clear()
+
+    # start main test script in another thread, allowing GUI updates and button presses while main script runs
     threading.Thread(target=worker, daemon=True).start()
 
 
 # main test worker function
 def worker():
+
     # set indicator bool test_running to True
     global test_running
     test_running=True
@@ -104,9 +111,12 @@ def worker():
 
         # log and display each sample till end of test
         for sample_num in range(num_samples):
+
+            # stop when STOP pressed
             if stop_event.is_set():
                 print("Stopped!", flush=True)
                 return
+            
             reading_time=time.time()
             #print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
             big_response_string=""
@@ -119,21 +129,29 @@ def worker():
                     time.sleep(0.01)
                     big_response_string+=response_string.rstrip('\r\n')+','
                 current_page_num=PA_names.index(dpg.get_value('PA_ID'))
-                print(f"Current page num: {current_page_num}")
                 #print(f'big response string: {repr(big_response_string)}',flush=True)
                 
+                # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
                 if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
                     if current_page_num == socket_num:
                         render_feedback(big_response_string,num_harmonics)
                     elif current_page_num>=len(PA_sockets):
                         render_feedback(zeros_resp_string,0)
+                
+                # write responses from all xitron channels to log
                 f.write(str(int(reading_time*1000))+',')
                 f.write(big_response_string.rstrip('\r\n'))
                 big_response_string=""
 
             f.write('\n')
+
+            # print status periodically
             if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
                 print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
+
+            if time.time()>reading_time+logging_period_seconds_float:
+                print("WARNING: sampling period too short!",flush=True)
+
             while(time.time()<reading_time+logging_period_seconds_float):
                 pass
 
@@ -165,7 +183,7 @@ PA_names=["XT2640 1","XT2640 2","XT2640 3","XT2640 4"]
 viewport_width,viewport_height=compute_window_size()
 
 
-#set sizes of all major UI elements
+#set sizes of all major UI elements based on viewport width
 ctrl_width=0.5*viewport_width
 fb_width=viewport_width-ctrl_width
 button_window_height=int(viewport_height*0.14)
@@ -244,7 +262,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
             dpg.add_text("Extra Data to Log")
             dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text",default_value=previous_options_list[5])
 
-       
+        # add spacer row
         with dpg.table_row():
             dpg.add_text(" ")
             dpg.add_text(" ")
@@ -266,7 +284,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
                 dpg.add_text(" ")
                 dpg.add_text(" ")
 
-
+# seperate window at bottom for start and stop buttons
 with dpg.window( pos=(0,ctrl_height),width=ctrl_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
     with dpg.table(header_row=False,borders_innerH=True):
         dpg.add_table_column()
@@ -285,33 +303,33 @@ with dpg.window( pos=(0,ctrl_height),width=ctrl_width,height=button_window_heigh
 
 #------------------------------------------------- FEEDBACK SECTION --------------------------------------------------#
 
-# function for converting response string to display
+# function for displaying response from xitron
 def render_feedback(response_string_raw,num_harms):
     response_list=response_string_raw.split(',')
     #print(response_list,flush=True)
     response_index=0
     for chan in channel_names:
-        dpg.set_value(f'V_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'V_RMS_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'V_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'V_AC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'V_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'V_DC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'A_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'A_RMS_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'A_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'A_AC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'A_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'A_DC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'W_RMS_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'W_RMS_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'W_AC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'W_AC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'W_DC_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'W_DC_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'PF_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'PF_{chan}',(response_list[response_index]))
         response_index+=1
-        dpg.set_value(f'FREQ_{chan}',prep_float_for_disp(response_list[response_index]))
+        dpg.set_value(f'FREQ_{chan}',(response_list[response_index]))
         response_index+=1+num_harms*2
 
 with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True,no_resize=True,no_title_bar=True):
@@ -426,15 +444,15 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
                 dpg.add_text("0.000000",tag=tag_string)
                 dpg.bind_item_font(tag_string,feedback_font)
 
-
+# seperate window at bottom for right and left arrow buttons
 with dpg.window( pos=(ctrl_width,fb_height),width=fb_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
     with dpg.table(header_row=False,borders_innerH=True):
         dpg.add_table_column()
         dpg.add_table_column()
 
         with dpg.table_row():
-            decrement_button=dpg.add_button(label="      <<      ",callback=decrement_page)
-            increment_button=dpg.add_button(label="      >>     ",callback=increment_page)
+            decrement_button=dpg.add_button(label="      <<      ",callback=left_arrow_callback)
+            increment_button=dpg.add_button(label="      >>     ",callback=right_arrow_callback)
             dpg.bind_item_font(decrement_button,button_font)
             dpg.bind_item_font(increment_button,button_font)
 
@@ -442,7 +460,7 @@ with dpg.window( pos=(ctrl_width,fb_height),width=fb_width,height=button_window_
 
 #------------------------------------------------- FEEDBACK SECTION --------------------------------------------------#
 
-
+# start GUI and destroy when closed
 dpg.create_viewport(title='Xitron GUI', width=viewport_width, height=viewport_height,resizable=False)
 dpg.setup_dearpygui()
 dpg.show_viewport()
