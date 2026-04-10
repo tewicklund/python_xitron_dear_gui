@@ -119,15 +119,17 @@ def worker():
                     time.sleep(0.01)
                     big_response_string+=response_string.rstrip('\r\n')+','
                 current_page_num=PA_names.index(dpg.get_value('PA_ID'))
+                print(f"Current page num: {current_page_num}")
                 #print(f'big response string: {repr(big_response_string)}',flush=True)
                 
                 if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
                     if current_page_num == socket_num:
                         render_feedback(big_response_string,num_harmonics)
-                    else:
+                    elif current_page_num>=len(PA_sockets):
                         render_feedback(zeros_resp_string,0)
                 f.write(str(int(reading_time*1000))+',')
                 f.write(big_response_string.rstrip('\r\n'))
+                big_response_string=""
 
             f.write('\n')
             if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
