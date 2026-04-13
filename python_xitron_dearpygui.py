@@ -115,6 +115,7 @@ def worker():
             # stop when STOP pressed
             if stop_event.is_set():
                 print("Stopped!", flush=True)
+                render_feedback(zeros_resp_string,0)
                 return
             
             reading_time=time.time()
