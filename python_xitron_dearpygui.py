@@ -57,6 +57,8 @@ def worker():
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
     num_harmonics=dpg.get_value("num_harmonics_int")
     logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
+    if logging_period_seconds_float<=0.2:
+        print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback")
     if dpg.get_value("test_duration_text") == "":
         test_duration_seconds_float=604800.0
     else:
@@ -115,6 +117,7 @@ def worker():
             # stop when STOP pressed
             if stop_event.is_set():
                 print("Stopped!", flush=True)
+                dpg.set_value(loading_bar_id,0)
                 render_feedback(zeros_resp_string,0)
                 return
             
@@ -133,7 +136,9 @@ def worker():
                 #print(f'big response string: {repr(big_response_string)}',flush=True)
                 
                 # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
-                if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
+                if (logging_period_seconds_float>0.200):
+                    dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
+                    print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
                     if current_page_num == socket_num:
                         render_feedback(big_response_string,num_harmonics)
                     elif current_page_num>=len(PA_sockets):
@@ -146,10 +151,6 @@ def worker():
 
             f.write('\n')
 
-            # print status periodically
-            if (sample_num % 10 == 0 or logging_period_seconds_float>0.200):
-                print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
-
             if time.time()>reading_time+logging_period_seconds_float:
                 print("WARNING: sampling period too short!",flush=True)
 
@@ -157,6 +158,8 @@ def worker():
                 pass
 
     # close sockets after test is done
+    dpg.set_value(loading_bar_id,0)
+    render_feedback(zeros_resp_string,0)
     for socket_num in range(len(PA_sockets)):
         PA_sockets[socket_num].close()
 
@@ -187,8 +190,9 @@ viewport_width,viewport_height=compute_window_size()
 #set sizes of all major UI elements based on viewport width
 ctrl_width=0.5*viewport_width
 fb_width=viewport_width-ctrl_width
-button_window_height=int(viewport_height*0.14)
-fb_height=viewport_height-button_window_height
+button_window_height=int(viewport_height*0.17)
+loading_window_height=int(viewport_height*0.09)
+fb_height=viewport_height-button_window_height-loading_window_height
 ctrl_height=fb_height
 
 
@@ -198,7 +202,7 @@ with dpg.font_registry():
     title_font = dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.02))
     normal_font = dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.013))
     tiny_font = dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.008))
-    button_font=dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.05))
+    button_font=dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.04))
     feedback_font=dpg.add_font("FiraMono-Regular.ttf",int(viewport_width*0.013))
 
 # text defaults to normal font
@@ -286,7 +290,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
                 dpg.add_text(" ")
 
 # seperate window at bottom for start and stop buttons
-with dpg.window( pos=(0,ctrl_height),width=ctrl_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
+with dpg.window( pos=(0,ctrl_height+loading_window_height),width=ctrl_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
     with dpg.table(header_row=False,borders_innerH=True):
         dpg.add_table_column()
         dpg.add_table_column()
@@ -446,7 +450,7 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
                 dpg.bind_item_font(tag_string,feedback_font)
 
 # seperate window at bottom for right and left arrow buttons
-with dpg.window( pos=(ctrl_width,fb_height),width=fb_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
+with dpg.window( pos=(ctrl_width,fb_height+loading_window_height),width=fb_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
     with dpg.table(header_row=False,borders_innerH=True):
         dpg.add_table_column()
         dpg.add_table_column()
@@ -456,6 +460,14 @@ with dpg.window( pos=(ctrl_width,fb_height),width=fb_width,height=button_window_
             increment_button=dpg.add_button(label="      >>     ",callback=right_arrow_callback)
             dpg.bind_item_font(decrement_button,button_font)
             dpg.bind_item_font(increment_button,button_font)
+
+
+# add window for displaying progress bar
+with dpg.window( pos=(0,fb_height),width=viewport_width,height=10,no_move=True,no_resize=True,no_title_bar=True):
+
+    dpg.add_text("Progress:")
+    loading_bar_id = dpg.add_progress_bar(default_value=0.0, width=viewport_width,height=loading_window_height/2)
+    
 
 
 
