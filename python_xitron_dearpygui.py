@@ -197,8 +197,12 @@ print(f"ctrl width {ctrl_width}")
 fb_width=viewport_width-ctrl_width
 print(f"fb_width {fb_width}")
 button_window_height=int(viewport_height*0.17)
+if button_window_height<100:
+    button_window_height=100
 print(f"button window height {button_window_height}")
-loading_window_height=int(viewport_height*0.09)
+loading_window_height=int(viewport_height*0.1)
+if loading_window_height<100:
+    loading_window_height=100
 print(f"loading window height {loading_window_height}")
 fb_height=viewport_height-button_window_height-loading_window_height
 print(f"feedback height {fb_height}")
