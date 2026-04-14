@@ -187,15 +187,23 @@ PA_names=["XT2640 1","XT2640 2","XT2640 3","XT2640 4"]
 
 # size GUI window based on the size of the largest display
 viewport_width,viewport_height=compute_window_size()
+print(f"viewport width {viewport_width}")
+print(f"viewport_height {viewport_height}")
 
 
 #set sizes of all major UI elements based on viewport width
 ctrl_width=0.5*viewport_width
+print(f"ctrl width {ctrl_width}")
 fb_width=viewport_width-ctrl_width
+print(f"fb_width {fb_width}")
 button_window_height=int(viewport_height*0.17)
+print(f"button window height {button_window_height}")
 loading_window_height=int(viewport_height*0.09)
+print(f"loading window height {loading_window_height}")
 fb_height=viewport_height-button_window_height-loading_window_height
+print(f"feedback height {fb_height}")
 ctrl_height=fb_height
+print(f"ctrl height {ctrl_height}")
 
 
 # add a font registry, needed for having next of different sizes
@@ -473,7 +481,7 @@ with dpg.window( pos=(ctrl_width,fb_height+loading_window_height),width=fb_width
 with dpg.window( pos=(0,fb_height),width=viewport_width,height=loading_window_height,no_move=True,no_resize=True,no_title_bar=True) as loading_window:
 
     dpg.add_text("Progress:")
-    loading_bar_id = dpg.add_progress_bar(default_value=0.0, width=viewport_width,height=loading_window_height/3.5)
+    loading_bar_id = dpg.add_progress_bar(default_value=0.0, width=viewport_width,height=int(loading_window_height/3.5))
     
 dpg.bind_item_theme(loading_window,compact_theme)
 
