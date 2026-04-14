@@ -4,13 +4,49 @@ import time
 import socket
 import threading
 from helper_functions import *
+import json
 
 # threading event to make stop button work
 stop_event=threading.Event()
 
+#-------------------------------------------------- MISC SECTION --------------------------------------------------#
+
+def load_from_json():
+    with open('test_parameter_config.json') as f:
+        parameters_from_json=json.load(f)
+    
+    dpg.set_value('test_name_text',parameters_from_json['test_name'])
+    parent_path=parameters_from_json['log_file_path']
+    if parent_path != '':
+        dpg.set_value('folder_path_text',parameters_from_json['log_file_path'])
+    dpg.set_value('num_harmonics_int',parameters_from_json['num_harmonics'])
+    dpg.set_value('log_period_text',parameters_from_json['logging_period'])
+    dpg.set_value('test_duration_text',parameters_from_json['test_duration'])
+    dpg.set_value('extra_data_text',parameters_from_json['extra_data'])
+
+
+
+
+
+#-------------------------------------------------- MISC SECTION --------------------------------------------------#
+
 
 #-------------------------------------------------- CALLBACK SECTION --------------------------------------------------#
 
+def save_to_json_callback():
+    test_parameter_dict={
+        'test_name':dpg.get_value('test_name_text'),
+        'log_file_path':dpg.get_value('folder_path_text'),
+        'num_harmonics':dpg.get_value('num_harmonics_int'),
+        'logging_period':dpg.get_value('log_period_text'),
+        'test_duration':dpg.get_value('test_duration_text'),
+        'extra_data':dpg.get_value('extra_data_text')
+        }
+    with open('test_parameter_config.json','w') as f:
+        json.dump(test_parameter_dict,f)
+
+def get_pa_addresses_callback():
+    pass
 
 # right arrow callback function
 def right_arrow_callback():
@@ -33,7 +69,7 @@ def start_test():
 
     # save your inputs so they are the default when the program is launched next
     f=open("prev_options.txt",'w')
-    f.write(f'{dpg.get_value("test_name_text")},{dpg.get_value("folder_path_text")},{str(dpg.get_value("num_harmonics_int"))},{dpg.get_value("log_period_ms_text")},{dpg.get_value("test_duration_text")},{dpg.get_value("extra_data_text")},')
+    f.write(f'{dpg.get_value("test_name_text")},{dpg.get_value("folder_path_text")},{str(dpg.get_value("num_harmonics_int"))},{dpg.get_value("log_period_text")},{dpg.get_value("test_duration_text")},{dpg.get_value("extra_data_text")},')
     for x in range(len(PA_names)):
         f.write(dpg.get_value(f'PA_IP{x+1}')+',')
         f.write(dpg.get_value(f'PA_port{x+1}')+',')
@@ -56,9 +92,9 @@ def worker():
     # collect input parameters from GUI
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
     num_harmonics=dpg.get_value("num_harmonics_int")
-    logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
+    logging_period_seconds_float=float(dpg.get_value("log_period_text"))
     if logging_period_seconds_float<=0.2:
-        print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")
+        print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")    
     if dpg.get_value("test_duration_text") == "":
         test_duration_seconds_float=604800.0
     else:
@@ -186,7 +222,7 @@ PA_names=["XT2640 1","XT2640 2","XT2640 3","XT2640 4"]
 
 
 # size GUI window based on the size of the largest display
-viewport_width,viewport_height=compute_window_size()
+viewport_width,viewport_height=compute_window_size(1920,1080)
 print(f"viewport width {viewport_width}")
 print(f"viewport_height {viewport_height}")
 
@@ -239,11 +275,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
     dpg.bind_item_font("ctrl_title",title_font)
     dpg.add_spacer(height=spacer_height)
 
-    # load defaults from file
-    f=open("prev_options.txt","r")
-    previous_options=f.readline()
-    f.close()
-    previous_options_list=previous_options.split(',')
+    
 
 
     with dpg.table(header_row=False):
@@ -256,7 +288,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         # Test Name field
         with dpg.table_row():
             dpg.add_text("Test Name:")
-            dpg.add_input_text(width=-1, hint=".csv appended automatically",tag="test_name_text",default_value=previous_options_list[0])
+            dpg.add_input_text(width=-1, hint=".csv appended automatically",tag="test_name_text")
 
         
         # Log file path field
@@ -270,24 +302,28 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         # Number of harmonics to log
         with dpg.table_row():
             dpg.add_text("Num Harmonics to Log:")
-            dpg.add_input_int(tag='num_harmonics_int',default_value=int(previous_options_list[2]))
+            dpg.add_input_int(tag='num_harmonics_int',default_value=13)
 
         # time between readings
         with dpg.table_row():
-            dpg.add_text("Logging Period (ms):")
-            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000",tag="log_period_ms_text",default_value=previous_options_list[3])
+            dpg.add_text("Logging Period (s):")
+            dpg.add_input_text(width=-1,hint="Enter integer between 100 and 10,000",tag="log_period_text",default_value='0.25')
 
         
         # total test duration, leaving blank will set the test time to 1 week
         with dpg.table_row():
             dpg.add_text("Test Duration (s)")
-            dpg.add_input_text(width=-1,hint="Leave blank for indefinite logging",tag="test_duration_text",default_value=previous_options_list[4])
+            dpg.add_input_text(width=-1,hint="Leave blank for indefinite logging",tag="test_duration_text")
 
         
         # put other desired parameters to log here
         with dpg.table_row():
             dpg.add_text("Extra Data to Log")
-            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text",default_value=previous_options_list[5])
+            dpg.add_input_text(width=-1,hint="ex. V:CH1:CF,A:CH1:CF,V:CH2:CF,A:CH2:CF",tag="extra_data_text")
+
+        with dpg.table_row():
+            dpg.add_text("")
+            dpg.add_button(label="SAVE TO JSON",callback=save_to_json_callback)
 
         # add spacer row
         with dpg.table_row():
@@ -299,18 +335,24 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         for x in range(len(PA_names)):
             with dpg.table_row():
                 dpg.add_text(f"Xitron {x+1} IP Address:")
-                dpg.add_input_text(width=-1,tag=f'PA_IP{x+1}',default_value=previous_options_list[prev_options_index])
+                dpg.add_input_text(width=-1,tag=f'PA_IP{x+1}')
                 prev_options_index+=1
 
             with dpg.table_row():
                 dpg.add_text(f"Xitron {x+1} Port:")
-                dpg.add_input_text(width=-1,tag=f'PA_port{x+1}',default_value=previous_options_list[prev_options_index])
+                dpg.add_input_text(width=-1,tag=f'PA_port{x+1}')
                 prev_options_index+=1
 
             if x != len(PA_names)-1:
                 with dpg.table_row():
                     dpg.add_text(" ")
                     dpg.add_text(" ")
+
+        with dpg.table_row():
+            dpg.add_text("")
+            dpg.add_button(label="GET PA ADDRESSES",callback=get_pa_addresses_callback)
+
+        
 
 # seperate window at bottom for start and stop buttons
 with dpg.window( pos=(0,ctrl_height+loading_window_height),width=ctrl_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
@@ -323,6 +365,9 @@ with dpg.window( pos=(0,ctrl_height+loading_window_height),width=ctrl_width,heig
             increment_button=dpg.add_button(label="     STOP     ",callback=stop_test)
             dpg.bind_item_font(decrement_button,button_font)
             dpg.bind_item_font(increment_button,button_font)
+
+
+load_from_json()
 
 #-------------------------------------------------- CONTROL SECTION --------------------------------------------------#
 
