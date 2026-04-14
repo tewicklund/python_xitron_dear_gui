@@ -262,7 +262,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         # Log file path field
         with dpg.table_row():
             dpg.add_text("Log File Path:")
-            default_path=str(Path(__file__).resolve().parent)+'/csvs'
+            default_path=str(Path(__file__).resolve().parent)
             full_path_text=dpg.add_input_text(width=-1,default_value=default_path,tag="folder_path_text")
             dpg.bind_item_font(full_path_text,tiny_font)
 
