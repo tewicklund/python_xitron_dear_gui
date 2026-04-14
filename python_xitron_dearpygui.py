@@ -58,7 +58,7 @@ def worker():
     num_harmonics=dpg.get_value("num_harmonics_int")
     logging_period_seconds_float=float(dpg.get_value("log_period_ms_text"))/1000.0
     if logging_period_seconds_float<=0.2:
-        print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback")
+        print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")
     if dpg.get_value("test_duration_text") == "":
         test_duration_seconds_float=604800.0
     else:
@@ -130,14 +130,15 @@ def worker():
                     PA_sockets[socket_num].sendall(subquery.encode())
                     response_string=PA_sockets[socket_num].recv(4096).decode()
                     #print(f'Got response {response_string}', flush=True)
-                    time.sleep(0.01)
+                    #time.sleep(0.01)
                     big_response_string+=response_string.rstrip('\r\n')+','
                 current_page_num=PA_names.index(dpg.get_value('PA_ID'))
                 #print(f'big response string: {repr(big_response_string)}',flush=True)
                 
                 # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
+                dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                 if (logging_period_seconds_float>0.200):
-                    dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
+                    #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                     print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
                     if current_page_num == socket_num:
                         render_feedback(big_response_string,num_harmonics)
@@ -160,6 +161,7 @@ def worker():
     # close sockets after test is done
     dpg.set_value(loading_bar_id,0)
     render_feedback(zeros_resp_string,0)
+    print("Done!")
     for socket_num in range(len(PA_sockets)):
         PA_sockets[socket_num].close()
 
