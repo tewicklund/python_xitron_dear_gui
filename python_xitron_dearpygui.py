@@ -207,6 +207,11 @@ with dpg.font_registry():
     button_font=dpg.add_font("DejaVuSans.ttf", int(viewport_width*0.04))
     feedback_font=dpg.add_font("FiraMono-Regular.ttf",int(viewport_width*0.013))
 
+with dpg.theme() as compact_theme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 0, 0)
+        dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 0, 0)
+        dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 0, 0)
 # text defaults to normal font
 dpg.bind_font(normal_font)
 
@@ -465,12 +470,12 @@ with dpg.window( pos=(ctrl_width,fb_height+loading_window_height),width=fb_width
 
 
 # add window for displaying progress bar
-with dpg.window( pos=(0,fb_height),width=viewport_width,height=loading_window_height,no_move=True,no_resize=True,no_title_bar=True):
+with dpg.window( pos=(0,fb_height),width=viewport_width,height=loading_window_height,no_move=True,no_resize=True,no_title_bar=True) as loading_window:
 
-    #dpg.add_text("Progress:")
+    dpg.add_text("Progress:")
     loading_bar_id = dpg.add_progress_bar(default_value=0.0, width=viewport_width,height=loading_window_height/3.5)
     
-    
+dpg.bind_item_theme(loading_window,compact_theme)
 
 
 
