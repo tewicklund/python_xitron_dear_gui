@@ -209,6 +209,9 @@ print(f"feedback height {fb_height}")
 ctrl_height=fb_height
 print(f"ctrl height {ctrl_height}")
 
+# set spacer height
+spacer_height=int(viewport_height*0.005)
+
 
 # add a font registry, needed for having next of different sizes
 with dpg.font_registry():
@@ -234,7 +237,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
     # Control section title
     dpg.add_text("CONTROL",tag="ctrl_title")
     dpg.bind_item_font("ctrl_title",title_font)
-    dpg.add_spacer(height=int(viewport_height*0.01))
+    dpg.add_spacer(height=spacer_height)
 
     # load defaults from file
     f=open("prev_options.txt","r")
@@ -304,9 +307,10 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
                 dpg.add_input_text(width=-1,tag=f'PA_port{x+1}',default_value=previous_options_list[prev_options_index])
                 prev_options_index+=1
 
-            with dpg.table_row():
-                dpg.add_text(" ")
-                dpg.add_text(" ")
+            if x != len(PA_names)-1:
+                with dpg.table_row():
+                    dpg.add_text(" ")
+                    dpg.add_text(" ")
 
 # seperate window at bottom for start and stop buttons
 with dpg.window( pos=(0,ctrl_height+loading_window_height),width=ctrl_width,height=button_window_height,no_move=True,no_resize=True,no_title_bar=True):
@@ -361,7 +365,7 @@ with dpg.window( pos=(ctrl_width,0),width=fb_width,height=fb_height,no_move=True
 
     feedback_title=dpg.add_text("FEEDBACK")
     dpg.bind_item_font(feedback_title,title_font)
-    dpg.add_spacer(height=int(viewport_height*0.05))
+    dpg.add_spacer(height=spacer_height)
 
     with dpg.table(header_row=False,borders_innerH=True,borders_innerV=True):
         
