@@ -467,8 +467,9 @@ with dpg.window( pos=(ctrl_width,fb_height+loading_window_height),width=fb_width
 # add window for displaying progress bar
 with dpg.window( pos=(0,fb_height),width=viewport_width,height=loading_window_height,no_move=True,no_resize=True,no_title_bar=True):
 
-    dpg.add_text("Progress:")
+    #dpg.add_text("Progress:")
     loading_bar_id = dpg.add_progress_bar(default_value=0.0, width=viewport_width,height=loading_window_height/3.5)
+    
     
 
 
