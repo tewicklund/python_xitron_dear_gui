@@ -217,7 +217,7 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
     # Control section title
     dpg.add_text("CONTROL",tag="ctrl_title")
     dpg.bind_item_font("ctrl_title",title_font)
-    dpg.add_spacer(height=int(viewport_height*0.05))
+    dpg.add_spacer(height=int(viewport_height*0.01))
 
     # load defaults from file
     f=open("prev_options.txt","r")
