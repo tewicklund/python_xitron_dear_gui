@@ -37,6 +37,13 @@ def open_pa_sockets():
             PA_sockets.append(s)
     return PA_sockets
 
+def close_pa_sockets(pa_sockets):
+    for socket in pa_sockets:
+        try:
+            socket.close()
+        except:
+            pass
+
 
 #-------------------------------------------------- MISC SECTION --------------------------------------------------#
 
@@ -63,9 +70,7 @@ def get_pa_addresses_callback():
         port_value=10733 if len(pa_address_list) > x else ""
         dpg.set_value(f'PA_IP{x+1}',ip_value)
         dpg.set_value(f'PA_port{x+1}',port_value)
-    dpg.set_value("get_ip_status_text","Done!")
-    time.sleep(1)
-    dpg.set_value("get_ip_status_text","")
+    dpg.set_value("get_ip_status_text","Got IP Addresses and Ports")
 
 
 # right arrow callback function
@@ -159,39 +164,64 @@ def worker():
             reading_time=time.time()
             #print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
             big_response_string=""
-            for socket_num in range(len(PA_sockets)):
-                for subquery in query_string_list:
-                    #print(f'sending string {repr(subquery)}',flush=True)
-                    PA_sockets[socket_num].sendall(subquery.encode())
-                    response_string=PA_sockets[socket_num].recv(4096).decode()
-                    #print(f'Got response {response_string}', flush=True)
-                    #time.sleep(0.01)
-                    big_response_string+=response_string.rstrip('\r\n')+','
-                current_page_num=PA_names.index(dpg.get_value('PA_ID'))
-                #print(f'big response string: {repr(big_response_string)}',flush=True)
+            reattempt_flag=False
+            try:
+                for socket_num in range(len(PA_sockets)):
+                    for subquery in query_string_list:
+                        #print(f'sending string {repr(subquery)}',flush=True)
+                        PA_sockets[socket_num].sendall(subquery.encode())
+                        response_string=PA_sockets[socket_num].recv(4096).decode()
+                        #print(f'Got response {response_string}', flush=True)
+                        #time.sleep(0.01)
+                        big_response_string+=response_string.rstrip('\r\n')+','
+                    current_page_num=PA_names.index(dpg.get_value('PA_ID'))
+                    #print(f'big response string: {repr(big_response_string)}',flush=True)
+                    
+                    # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
+                    dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
+                    if (logging_period_seconds_float>0.200):
+                        #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
+                        print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
+                        if current_page_num == socket_num:
+                            render_feedback(big_response_string,num_harmonics)
+                        elif current_page_num>=len(PA_sockets):
+                            render_feedback(zeros_resp_string,0)
+                    
+                    # write responses from all xitron channels to log
+                    f.write(str(int(reading_time*1000))+',')
+                    f.write(big_response_string.rstrip('\r\n'))
+                    big_response_string=""
+            except:
+                print("starting reconnection attempts")
+                reattempt_flag=True
+                max_attempts=20
+                attempt=0
                 
-                # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
-                dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
-                if (logging_period_seconds_float>0.200):
-                    #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
-                    print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
-                    if current_page_num == socket_num:
-                        render_feedback(big_response_string,num_harmonics)
-                    elif current_page_num>=len(PA_sockets):
-                        render_feedback(zeros_resp_string,0)
-                
-                # write responses from all xitron channels to log
-                f.write(str(int(reading_time*1000))+',')
-                f.write(big_response_string.rstrip('\r\n'))
-                big_response_string=""
+                while attempt<max_attempts:
+                    try:
+                        close_pa_sockets(PA_sockets)
+                        PA_sockets=open_pa_sockets()
+                        print("recovered!")
+                        attempt=max_attempts
+                    except:
+                        attempt+=1
+                        f.write(f"Connection error, retry {attempt} of {max_attempts}\n")
+                        print(f'failed attempt {attempt} of {max_attempts}')
+                        if attempt == max_attempts:
+                            print('RECOVERY ATTEMPT FAILED, STOPPING TEST')
+                            stop_event.set()
+
 
             f.write('\n')
 
-            if time.time()>reading_time+logging_period_seconds_float:
-                print("WARNING: sampling period too short!",flush=True)
+            if reattempt_flag:
+                reattempt_flag=False
+            else:
+                if time.time()>reading_time+logging_period_seconds_float:
+                    print("WARNING: sampling period too short!",flush=True)
 
-            while(time.time()<reading_time+logging_period_seconds_float):
-                pass
+                while(time.time()<reading_time+logging_period_seconds_float):
+                    pass
 
     # close sockets after test is done
     dpg.set_value(loading_bar_id,0)

@@ -1,1 +1,1 @@
-{"test_name": "xtra_data_test", "log_file_path": "C:\\Users\\tewicklu\\python_xitron_dear_gui", "num_harmonics": 13, "logging_period": "1", "test_duration": "10", "extra_data": "V:CH1:CF,A:CH1:CF"}
+{"test_name": "disconnect_test", "log_file_path": "C:\\Users\\tewicklu\\python_xitron_dear_gui", "num_harmonics": 0, "logging_period": "1", "test_duration": "60", "extra_data": "V:CH1:CF,A:CH1:CF"}
