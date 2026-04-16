@@ -1,1 +1,1 @@
-READ?,V:CH2:RMS
+*IDN?

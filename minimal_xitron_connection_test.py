@@ -5,7 +5,7 @@ ip="192.168.99.7"
 port=10733
 
 # import query string that is sent to power analyzers
-f=open("query_string.txt",'r')
+f=open("minimal_query_string.txt",'r')
 minimal_query_string=f.readline().rstrip("\r\n")
 f.close()
 print(f"got q string {minimal_query_string}")

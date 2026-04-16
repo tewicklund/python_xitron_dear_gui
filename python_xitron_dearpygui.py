@@ -46,7 +46,17 @@ def save_to_json_callback():
         json.dump(test_parameter_dict,f)
 
 def get_pa_addresses_callback():
-    pass
+    dpg.set_value("get_ip_status_text","Please Wait, getting IPs...")
+    pa_address_list=get_xitron_IPs(10733)
+    for x in range(len(PA_names)):
+        ip_value=pa_address_list[x] if len(pa_address_list) > x else ""
+        port_value=10733 if len(pa_address_list) > x else ""
+        dpg.set_value(f'PA_IP{x+1}',ip_value)
+        dpg.set_value(f'PA_port{x+1}',port_value)
+    dpg.set_value("get_ip_status_text","Done!")
+    time.sleep(1)
+    dpg.set_value("get_ip_status_text","")
+
 
 # right arrow callback function
 def right_arrow_callback():
@@ -113,7 +123,7 @@ def worker():
 
 
     # make a list of query strings to send to analyzer, limit of 480 char response
-    query_string_list=build_query_string_list("ch1_q_string.txt",num_harmonics)
+    query_string_list=build_query_string_list("ch1_q_string.txt",num_harmonics,extra_data_string)
     
 
     # open sockets for power analyzers
@@ -351,6 +361,10 @@ with dpg.window( pos=(0,0),width=ctrl_width,height=ctrl_height,no_move=True,no_r
         with dpg.table_row():
             dpg.add_text("")
             dpg.add_button(label="GET PA ADDRESSES",callback=get_pa_addresses_callback)
+        
+        with dpg.table_row():
+            dpg.add_text("")
+            dpg.add_text(label="",tag="get_ip_status_text")
 
         
 

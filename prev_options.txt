@@ -1,0 +1,1 @@
+xtra_data_test,C:\Users\tewicklu\python_xitron_dear_gui,13,1,10,V:CH1:CF,A:CH1:CF,192.168.99.7,10733,192.168.99.184,10733,,,,,
