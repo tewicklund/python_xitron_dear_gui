@@ -25,7 +25,17 @@ def load_from_json():
     dpg.set_value('extra_data_text',parameters_from_json['extra_data'])
 
 
-
+def open_pa_sockets():
+    PA_sockets=[]
+    for x in range(len(PA_names)):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        pa_ip=dpg.get_value(f'PA_IP{x+1}')
+        pa_port=dpg.get_value(f'PA_port{x+1}')
+        if pa_ip != "" and pa_port != "":
+            s.connect((pa_ip,int(pa_port)))
+            s.settimeout(1)
+            PA_sockets.append(s)
+    return PA_sockets
 
 
 #-------------------------------------------------- MISC SECTION --------------------------------------------------#
@@ -77,14 +87,6 @@ def left_arrow_callback():
 # START button callback function
 def start_test():
 
-    # save your inputs so they are the default when the program is launched next
-    f=open("prev_options.txt",'w')
-    f.write(f'{dpg.get_value("test_name_text")},{dpg.get_value("folder_path_text")},{str(dpg.get_value("num_harmonics_int"))},{dpg.get_value("log_period_text")},{dpg.get_value("test_duration_text")},{dpg.get_value("extra_data_text")},')
-    for x in range(len(PA_names)):
-        f.write(dpg.get_value(f'PA_IP{x+1}')+',')
-        f.write(dpg.get_value(f'PA_port{x+1}')+',')
-    f.close()
-
     # clear the stop event in case the last session was stopped 
     stop_event.clear()
 
@@ -110,12 +112,8 @@ def worker():
     else:
         test_duration_seconds_float=float(dpg.get_value("test_duration_text"))
     extra_data_string=dpg.get_value("extra_data_text")
-    PA_IPs=[]
-    PA_ports=[]
-    for x in range(len(PA_names)):
-        PA_IPs.append(dpg.get_value(f'PA_IP{x+1}'))
-        port_int=int((dpg.get_value(f'PA_port{x+1}')) or -1)
-        PA_ports.append(port_int)
+
+    
     
 
     # compute number of samples
@@ -127,17 +125,8 @@ def worker():
     
 
     # open sockets for power analyzers
-    PA_sockets=[]
-    for x in range(len(PA_names)):
-        if PA_IPs[x] != "" and PA_ports[x] != "":
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #print(f'attempting connection to {PA_IPs[x]} port {PA_ports[x]}', flush=True)
-            s.connect((PA_IPs[x],PA_ports[x]))
-            s.settimeout(10)
-            PA_sockets.append(s)
-            #print(f"Appended socket {s} to PA_sockets, there are now {len(PA_sockets)} sockets", flush=True)
-
-
+    PA_sockets=open_pa_sockets()
+    
 
     # main test loop
     with open(log_file_full_path,'w') as f:
