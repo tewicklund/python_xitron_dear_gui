@@ -1,7 +1,7 @@
 import time
 import socket
 
-ip="192.168.99.7"
+ip="192.168.99.184"
 port=10733
 
 # import query string that is sent to power analyzers

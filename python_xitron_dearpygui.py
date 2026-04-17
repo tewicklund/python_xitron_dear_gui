@@ -202,12 +202,12 @@ def worker():
                             render_feedback(zeros_resp_string,0)
 
                         backup_f=open(log_file_full_path+'.bak','a')
-                        backup_f.write(big_response_string)
+                        backup_f.write(big_response_string+'\n')
                         backup_f.close()
                     
                     # write responses from all xitron channels to log
                     f.write(str(int(reading_time*1000))+',')
-                    f.write(big_response_string)
+                    f.write(big_response_string+'\n')
                     big_response_string=""
             except:
                 print("starting reconnection attempts")
