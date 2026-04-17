@@ -112,6 +112,7 @@ def worker():
     logging_period_seconds_float=float(dpg.get_value("log_period_text"))
     if logging_period_seconds_float<=0.2:
         print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")    
+    fast_mode=(logging_period_seconds_float<0.200)
     if dpg.get_value("test_duration_text") == "":
         test_duration_seconds_float=604800.0
     else:
@@ -151,6 +152,19 @@ def worker():
             f.write(',')
         f.write('\n')
 
+        if not fast_mode:
+            backup_f=open(log_file_full_path+'.bak','w')
+            # add column headers to first row
+            backup_f.write("Timestamp Epoch ms,")
+            for socket_num in range(len(PA_sockets)):
+                for subquery in query_string_list:
+                    column_headers_per_analyzer=subquery.removeprefix('READ?,').removesuffix('\n')+','
+                    column_headers_per_analyzer=column_headers_per_analyzer.replace(',',f':PA{socket_num+1},')
+                    backup_f.write(column_headers_per_analyzer)
+                backup_f.write(',')
+            backup_f.write('\n')
+            backup_f.close()
+
         # log and display each sample till end of test
         for sample_num in range(num_samples):
 
@@ -179,17 +193,21 @@ def worker():
                     
                     # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
                     dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
-                    if (logging_period_seconds_float>0.200):
+                    if (not fast_mode):
                         #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                         print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
                         if current_page_num == socket_num:
                             render_feedback(big_response_string,num_harmonics)
                         elif current_page_num>=len(PA_sockets):
                             render_feedback(zeros_resp_string,0)
+
+                        backup_f=open(log_file_full_path+'.bak','a')
+                        backup_f.write(big_response_string)
+                        backup_f.close()
                     
                     # write responses from all xitron channels to log
                     f.write(str(int(reading_time*1000))+',')
-                    f.write(big_response_string.rstrip('\r\n'))
+                    f.write(big_response_string)
                     big_response_string=""
             except:
                 print("starting reconnection attempts")
@@ -212,7 +230,7 @@ def worker():
                             stop_event.set()
 
 
-            f.write('\n')
+
 
             if reattempt_flag:
                 reattempt_flag=False
