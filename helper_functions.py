@@ -12,8 +12,8 @@ def compute_window_size(width=None, height=None):
     main_height=main_monitor.height
 
     # defaults to 75% of biggest monitor's width and height
-    viewport_width=int(main_width*0.75)
-    viewport_height=int(main_height*0.75)
+    viewport_width=int(main_width*0.9)
+    viewport_height=int(main_height*0.9)
 
     # OVERRIDE: User can enter their own custom viewport size
     if width is not None and height is not None:
@@ -37,7 +37,8 @@ def build_query_string_list(ch1_query_no_harms_path, num_harms,extra_data):
     q_list=[ch1_query_with_harms]
     for x in range(3):
         q_list.append(ch1_query_with_harms.replace('CH1',f'CH{str(x+2)}'))
-    q_list.append('READ?,'+extra_data+'\n')
+    if extra_data != '':
+        q_list.append('READ?,'+extra_data+'\n')
     #print(f"Source query string: {ch1_query_no_harms}")
     #print(f"Output query string list: {q_list}")
 

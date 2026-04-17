@@ -251,7 +251,7 @@ PA_names=["XT2640 1","XT2640 2","XT2640 3","XT2640 4"]
 
 
 # size GUI window based on the size of the largest display
-viewport_width,viewport_height=compute_window_size(1920,1080)
+viewport_width,viewport_height=compute_window_size()
 print(f"viewport width {viewport_width}")
 print(f"viewport_height {viewport_height}")
 
