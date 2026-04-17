@@ -70,7 +70,7 @@ def get_xitron_IPs(tcp_port):
         print(f"trying ip {test_ip}")
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.01)
+            s.settimeout(0.03)
             s.connect((test_ip,tcp_port))
             s.sendall(b"*IDN?\n")
             resp = s.recv(1024).decode()

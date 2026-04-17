@@ -105,6 +105,7 @@ def worker():
     # set indicator bool test_running to True
     global test_running
     test_running=True
+    indefinite_logging=False
 
     # collect input parameters from GUI
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
@@ -114,7 +115,8 @@ def worker():
         print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")    
     fast_mode=(logging_period_seconds_float<0.200)
     if dpg.get_value("test_duration_text") == "":
-        test_duration_seconds_float=604800.0
+        test_duration_seconds_float=3153600000 #100 years
+        indefinite_logging=True
     else:
         test_duration_seconds_float=float(dpg.get_value("test_duration_text"))
     extra_data_string=dpg.get_value("extra_data_text")
@@ -195,7 +197,7 @@ def worker():
                     dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                     if (not fast_mode):
                         #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
-                        print(f"Got sample {sample_num+1} of {num_samples}", flush=True)
+                        print(f"Got sample {sample_num+1} of {num_samples if not indefinite_logging else 'many'}", flush=True)
                         if current_page_num == socket_num:
                             render_feedback(big_response_string,num_harmonics)
                         elif current_page_num>=len(PA_sockets):
