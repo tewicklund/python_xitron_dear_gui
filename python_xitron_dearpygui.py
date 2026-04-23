@@ -215,6 +215,7 @@ def worker():
                     # write responses from all xitron channels to log
                     f.write(str(int(reading_time*1000))+',')
                     f.write(big_response_string)
+                    print(repr(big_response_string),flush=True)
                     big_response_string=""
                 f.write('\n')
 
