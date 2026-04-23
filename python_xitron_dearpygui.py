@@ -109,27 +109,33 @@ def worker():
 
     # collect input parameters from GUI
     log_file_full_path=dpg.get_value("folder_path_text")+'/'+dpg.get_value("test_name_text")+'.csv'
+
     num_harmonics=dpg.get_value("num_harmonics_int")
+
     logging_period_seconds_float=float(dpg.get_value("log_period_text"))
     if logging_period_seconds_float<=0.2:
         print("FAST SAMPLING MODE: logging period <= 200ms, no terminal or GUI feedback, wait for Done!")    
     fast_mode=(logging_period_seconds_float<0.200)
+
     if dpg.get_value("test_duration_text") == "":
-        test_duration_seconds_float=3153600000 #100 years
         indefinite_logging=True
+        num_samples=10
     else:
         test_duration_seconds_float=float(dpg.get_value("test_duration_text"))
+        # compute number of samples
+        num_samples=int(test_duration_seconds_float/logging_period_seconds_float)
+
     extra_data_string=dpg.get_value("extra_data_text")
 
     
     
-
-    # compute number of samples
-    num_samples=int(test_duration_seconds_float/logging_period_seconds_float)
-
-
     # make a list of query strings to send to analyzer, limit of 480 char response
     query_string_list=build_query_string_list("ch1_q_string.txt",num_harmonics,extra_data_string)
+
+    # make a list of zeros to render if no analyzer connected
+    zeros_resp_string=""
+    for x in range(44):
+        zeros_resp_string+="0.0000,"
     
 
     # open sockets for power analyzers
@@ -139,11 +145,7 @@ def worker():
     # main test loop
     with open(log_file_full_path,'w') as f:
 
-        #setup
-        zeros_resp_string=""
-        for x in range(44):
-            zeros_resp_string+="0.0000,"
-
+        
         # add column headers to first row
         f.write("Timestamp Epoch ms,")
         for socket_num in range(len(PA_sockets)):
@@ -154,6 +156,7 @@ def worker():
             f.write(',')
         f.write('\n')
 
+        # add column headers to backup file
         if not fast_mode:
             backup_f=open(log_file_full_path+'.bak','w')
             # add column headers to first row
@@ -168,7 +171,9 @@ def worker():
             backup_f.close()
 
         # log and display each sample till end of test
-        for sample_num in range(num_samples):
+        sample_num=0
+        while sample_num < num_samples or indefinite_logging:
+        #for sample_num in range(num_samples):
 
             # stop when STOP pressed
             if stop_event.is_set():
@@ -178,9 +183,10 @@ def worker():
                 return
             
             reading_time=time.time()
-            #print(f'number of PA sockets: {len(PA_sockets)}', flush=True)
             big_response_string=""
             reattempt_flag=False
+
+            # query each power analyzer for test data
             try:
                 for socket_num in range(len(PA_sockets)):
                     for subquery in query_string_list:
@@ -193,11 +199,10 @@ def worker():
                     current_page_num=PA_names.index(dpg.get_value('PA_ID'))
                     #print(f'big response string: {repr(big_response_string)}',flush=True)
                     
-                    # if sample period shorter than 0.2 seconds, only update feedback every 10 samples
-                    dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
+                    # if sample period longer than 0.2 seconds, give feedback and write to backup file
                     if (not fast_mode):
-                        #dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                         print(f"Got sample {sample_num+1} of {num_samples if not indefinite_logging else 'many'}", flush=True)
+                        dpg.set_value(loading_bar_id,float(sample_num)/float(num_samples))
                         if current_page_num == socket_num:
                             render_feedback(big_response_string,num_harmonics)
                         elif current_page_num>=len(PA_sockets):
@@ -211,6 +216,8 @@ def worker():
                     f.write(str(int(reading_time*1000))+',')
                     f.write(big_response_string+'\n')
                     big_response_string=""
+
+            # try rebuilding list of sockets if the above loop fails
             except:
                 print("starting reconnection attempts")
                 reattempt_flag=True
@@ -231,17 +238,18 @@ def worker():
                             print('RECOVERY ATTEMPT FAILED, STOPPING TEST')
                             stop_event.set()
 
-
-
-
+            # print a warning if the reading takes longer than the logging period
             if reattempt_flag:
                 reattempt_flag=False
             else:
                 if time.time()>reading_time+logging_period_seconds_float:
                     print("WARNING: sampling period too short!",flush=True)
 
+                # wait till a full logging period has passed
                 while(time.time()<reading_time+logging_period_seconds_float):
                     pass
+
+            sample_num+=1
 
     # close sockets after test is done
     dpg.set_value(loading_bar_id,0)
