@@ -209,13 +209,14 @@ def worker():
                             render_feedback(zeros_resp_string,0)
 
                         backup_f=open(log_file_full_path+'.bak','a')
-                        backup_f.write(big_response_string+'\n')
+                        backup_f.write(big_response_string)
                         backup_f.close()
                     
                     # write responses from all xitron channels to log
                     f.write(str(int(reading_time*1000))+',')
-                    f.write(big_response_string+'\n')
+                    f.write(big_response_string)
                     big_response_string=""
+                f.write('\n')
 
             # try rebuilding list of sockets if the above loop fails
             except:
