@@ -221,6 +221,7 @@ def worker():
                 return
             
             reading_time=time.time()
+            f.write(str(int(reading_time*1000))+',')
             big_response_string=""
             reattempt_flag=False
 
@@ -251,9 +252,9 @@ def worker():
                         backup_f.close()
                     
                     # write responses from all xitron channels to log
-                    f.write(str(int(reading_time*1000))+',')
                     f.write(big_response_string)
-                    #print(repr(big_response_string),flush=True)
+
+                    # reset big response string
                     big_response_string=""
                 f.write('\n')
 
