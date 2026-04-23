@@ -191,7 +191,6 @@ def worker():
                 column_headers_per_analyzer=subquery.removeprefix('READ?,').removesuffix('\n')+','
                 column_headers_per_analyzer=column_headers_per_analyzer.replace(',',f':PA{socket_num+1},')
                 f.write(column_headers_per_analyzer)
-            f.write(',')
         f.write('\n')
 
         # add column headers to backup file
